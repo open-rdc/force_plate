@@ -5,6 +5,7 @@ import sys
 import serial
 import time
 import threading
+import datetime
 from ctypes import *
 from PyQt4 import QtGui
 from PyQt4.QtCore import QTimer
@@ -53,7 +54,8 @@ class Window(QtGui.QDialog):
         self.read_data_L = []
         self.read_data_R = []
 
-        self.f = open("data.csv", mode='a')
+        self.fl = open(datetime.datetime.today().strftime("%Y%m%d%H%M%S_L")+".csv", mode='w')
+        self.fr = open(datetime.datetime.today().strftime("%Y%m%d%H%M%S_R")+".csv", mode='w')
 
         self.recv_t = threading.Thread(target = self.recv_thread)
         self.recv_t.start()
@@ -109,7 +111,9 @@ class Window(QtGui.QDialog):
                 self.force_L = 0
             del self.read_data_L[0:index + 26 + d - 1]
 #            print("L: "+str(len(self.read_data_L)) + ": " + str(self.pos_L) + ", " + str(self.force_L))
-            self.f.write(str(self.force_L)+"\n")
+            for i in range(6):
+                self.fl.write(str(self.calibrated_value_L[i])+", ")
+            self.fl.write("\n")
 
         data_R = [0] * 16
         while len(self.read_data_R) >= (26 * 2):
@@ -138,6 +142,9 @@ class Window(QtGui.QDialog):
             else:
                 self.force_R = 0
             del self.read_data_R[0:index + 26 + d - 1]
+            for i in range(6):
+                self.fr.write(str(self.calibrated_value_R[i])+", ")
+            self.fr.write("\n")
 #            print("R: "+str(len(self.read_data_R)) + ": " + str(self.pos_R) + ", " + str(self.force_R))
 
 
