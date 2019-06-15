@@ -4,6 +4,7 @@
 import sys
 import serial
 import time
+import threading
 from ctypes import *
 from PyQt4 import QtGui
 from PyQt4.QtCore import QTimer
@@ -49,9 +50,17 @@ class Window(QtGui.QDialog):
         self.serial_L.write(start_signal)
         self.serial_R.write(start_signal)
 
-        timer = QTimer(self)
-        timer.timeout.connect(self.update)
-        timer.start(20)
+        self.read_data_L = []
+        self.read_data_R = []
+
+        self.f = open("data.csv", mode='a')
+
+        self.recv_t = threading.Thread(target = self.recv_thread)
+        self.recv_t.start()
+
+        timer_display = QTimer(self)
+        timer_display.timeout.connect(self.plot)
+        timer_display.start(33)
 
     def calibration(self):
         for i in range(6):
@@ -59,68 +68,78 @@ class Window(QtGui.QDialog):
         for i in range(6):
             self.offset_R[i] = self.measured_value_R[i]
 
+    def recv_thread(self):
+        while True:
+            self.update()
+            time.sleep(0.01)
+
     def update(self):
         MAX_FORCE_N = 1000.0
         MAX_TORQUE_Nm = 30.0
         MAX_VALUE = 10000
-        index = 0
 
-        read_data_L = self.serial_L.read(1000)
+        self.read_data_L += self.serial_L.read(1000)
+        self.read_data_R += self.serial_R.read(1000)
+
         data_L = [0] * 16
-        while read_data_L[index] != 0x10 or read_data_L[index+1] != 0x02:
-            index += 1
-        d = 0
-        for i in range(16):
-            if read_data_L[index + i + d + 2] == 0x10:
-                d += 1
-            data_L[i] = read_data_L[index + i + d + 2]
-        for i in range(6):
-            self.measured_value_L[i] = data_L[i * 2 + 4] + data_L[i * 2 + 5] * 0x100
-            if self.measured_value_L[i] >= 0x8000:
-                self.measured_value_L[i] = self.measured_value_L[i] - 0x10000
-        for i in range(3):
-            self.measured_value_L[i] = MAX_FORCE_N * self.measured_value_L[i] / MAX_VALUE
-        for i in range(3):
-            self.measured_value_L[i+3] = MAX_TORQUE_Nm * self.measured_value_L[i+3] / MAX_VALUE
-        for i in range(6):
-            self.calibrated_value_L[i] = self.measured_value_L[i] - self.offset_L[i]
-        self.force_L = -1 * self.calibrated_value_L[2]
-        if self.force_L > 5:
-            self.pos_L[0] = self.calibrated_value_L[3] / self.force_L
-            self.pos_L[1] = self.calibrated_value_L[4] / self.force_L
-        else:
-           self.force_L = 0
+        while len(self.read_data_L) >= (26 * 2):
+            index = 0
+            while self.read_data_L[index] != 0x10 or self.read_data_L[index+1] != 0x02:
+                index += 1
+            d = 0
+            for i in range(16):
+                if self.read_data_L[index + i + d + 2] == 0x10:
+                    d += 1
+                data_L[i] = self.read_data_L[index + i + d + 2]
+            for i in range(6):
+                self.measured_value_L[i] = data_L[i * 2 + 4] + data_L[i * 2 + 5] * 0x100
+                if self.measured_value_L[i] >= 0x8000:
+                    self.measured_value_L[i] = self.measured_value_L[i] - 0x10000
+            for i in range(3):
+                self.measured_value_L[i] = MAX_FORCE_N * self.measured_value_L[i] / MAX_VALUE
+            for i in range(3):
+                self.measured_value_L[i+3] = MAX_TORQUE_Nm * self.measured_value_L[i+3] / MAX_VALUE
+            for i in range(6):
+                self.calibrated_value_L[i] = self.measured_value_L[i] - self.offset_L[i]
+            self.force_L = -1 * self.calibrated_value_L[2]
+            if self.force_L > 5:
+                self.pos_L[0] = self.calibrated_value_L[3] / self.force_L
+                self.pos_L[1] = self.calibrated_value_L[4] / self.force_L
+            else:
+                self.force_L = 0
+            del self.read_data_L[0:index + 26 + d - 1]
+#            print("L: "+str(len(self.read_data_L)) + ": " + str(self.pos_L) + ", " + str(self.force_L))
+            self.f.write(str(self.force_L)+"\n")
 
-#        print(str(len(read_data_L)) + ": " + str(self.pos_L) + ", " + str(self.force_L))
-        
-        index = 0
-        read_data_R = self.serial_R.read(1000)
         data_R = [0] * 16
-        while read_data_R[index] != 0x10 or read_data_R[index+1] != 0x02:
-            index += 1
-        d = 0
-        for i in range(16):
-            if read_data_R[index + i + d + 2] == 0x10:
-                d += 1
-            data_R[i] = read_data_R[index + i + d + 2]
-        for i in range(6):
-            self.measured_value_R[i] = data_R[i * 2 + 4] + data_R[i * 2 + 5] * 0x100
-            if self.measured_value_R[i] >= 0x8000:
-                self.measured_value_R[i] = self.measured_value_R[i] - 0x10000
-        for i in range(3):
-            self.measured_value_R[i] = MAX_FORCE_N * self.measured_value_R[i] / MAX_VALUE
-        for i in range(3):
-            self.measured_value_R[i+3] = MAX_TORQUE_Nm * self.measured_value_R[i+3] / MAX_VALUE
-        for i in range(6):
-            self.calibrated_value_R[i] = self.measured_value_R[i] - self.offset_R[i]
-        self.force_R = -1 * self.calibrated_value_R[2]
-        if self.force_R > 5:
-            self.pos_R[0] = -1 * self.calibrated_value_R[3] / self.force_R
-            self.pos_R[1] = -1 * self.calibrated_value_R[4] / self.force_R
-        else:
-           self.force_R = 0
+        while len(self.read_data_R) >= (26 * 2):
+            index = 0
+            while self.read_data_R[index] != 0x10 or self.read_data_R[index+1] != 0x02:
+                index += 1
+            d = 0
+            for i in range(16):
+                if self.read_data_R[index + i + d + 2] == 0x10:
+                    d += 1
+                data_R[i] = self.read_data_R[index + i + d + 2]
+            for i in range(6):
+                self.measured_value_R[i] = data_R[i * 2 + 4] + data_R[i * 2 + 5] * 0x100
+                if self.measured_value_R[i] >= 0x8000:
+                    self.measured_value_R[i] = self.measured_value_R[i] - 0x10000
+            for i in range(3):
+                self.measured_value_R[i] = MAX_FORCE_N * self.measured_value_R[i] / MAX_VALUE
+            for i in range(3):
+                self.measured_value_R[i+3] = MAX_TORQUE_Nm * self.measured_value_R[i+3] / MAX_VALUE
+            for i in range(6):
+                self.calibrated_value_R[i] = self.measured_value_R[i] - self.offset_R[i]
+            self.force_R = -1 * self.calibrated_value_R[2]
+            if self.force_R > 5:
+                self.pos_R[0] = self.calibrated_value_R[3] / self.force_R
+                self.pos_R[1] = self.calibrated_value_R[4] / self.force_R
+            else:
+                self.force_R = 0
+            del self.read_data_R[0:index + 26 + d - 1]
+#            print("R: "+str(len(self.read_data_R)) + ": " + str(self.pos_R) + ", " + str(self.force_R))
 
-        self.plot()
 
     def plot(self):
         if len(self.im_L) > 0:
