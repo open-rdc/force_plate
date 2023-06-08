@@ -137,8 +137,8 @@ class Window(QtWidgets.QDialog):
                 self.calibrated_value_R[i] = self.measured_value_R[i] - self.offset_R[i]
             self.force_R = -1 * self.calibrated_value_R[2]
             if self.force_R > 5:
-                self.pos_R[0] = self.calibrated_value_R[3] / self.force_R
-                self.pos_R[1] = self.calibrated_value_R[4] / self.force_R
+                self.pos_R[0] = -self.calibrated_value_R[3] / self.force_R
+                self.pos_R[1] = -self.calibrated_value_R[4] / self.force_R
             else:
                 self.force_R = 0
             del self.read_data_R[0:index + 26 + d - 1]
