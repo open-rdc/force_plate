@@ -7,19 +7,19 @@ import time
 import threading
 import datetime
 from ctypes import *
-from PyQt4 import QtGui
-from PyQt4.QtCore import QTimer
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 
-class Window(QtGui.QDialog):
+class Window(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
-        self.button_calibration = QtGui.QPushButton('Calibration')
+        self.button_calibration = QtWidgets.QPushButton('Calibration')
         self.button_calibration.clicked.connect(self.calibration)
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.canvas)
         layout.addWidget(self.button_calibration)
         self.setLayout(layout)
@@ -162,7 +162,7 @@ class Window(QtGui.QDialog):
         self.canvas.draw()
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
 
     main = Window()
     main.showMaximized()
