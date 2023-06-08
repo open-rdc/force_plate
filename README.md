@@ -2,8 +2,10 @@
 
 Program for force measurement of force plate using 6-axis force sensor  
 
-
-
+## Environment  
+Ubuntu1804  
+python2.7  
+python3.6  
 
 ## Install  
 
