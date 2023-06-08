@@ -1,6 +1,9 @@
 # force_plate  
 
 Program for force measurement of force plate using 6-axis force sensor  
+force sensor: Leptrino FFS055  
+
+![IMG_5479](https://github.com/open-rdc/force_plate/assets/5755200/bf0a058e-21c4-4410-991e-aef468ef53ca)
 
 ## Environment  
 Ubuntu1804  
